@@ -11,3 +11,4 @@ hostfile
 runs/
 *.idea/
 .DS_Store
+*.tar.gz

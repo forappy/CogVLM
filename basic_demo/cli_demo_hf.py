@@ -14,8 +14,8 @@ from transformers import AutoModelForCausalLM, LlamaTokenizer
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--quant", choices=[4], type=int, default=None, help='quantization bits')
-parser.add_argument("--from_pretrained", type=str, default="THUDM/cogagent-chat-hf", help='pretrained ckpt')
-parser.add_argument("--local_tokenizer", type=str, default="lmsys/vicuna-7b-v1.5", help='tokenizer path')
+parser.add_argument("--from_pretrained", type=str, default="/mnt/pfs-mc0p4k/nlu/team/yuhaofu/modle_weight/cogvlm", help='pretrained ckpt')
+parser.add_argument("--local_tokenizer", type=str, default="/mnt/pfs-mc0p4k/nlu/team/yuhaofu/modle_weight/vicuna-7b-v1.5", help='tokenizer path')
 parser.add_argument("--fp16", action="store_true")
 parser.add_argument("--bf16", action="store_true")
 
@@ -77,17 +77,27 @@ while True:
                     old_prompt += old_query + " " + response + "\n"
                 query = old_prompt + "USER: {} ASSISTANT:".format(query)
 
+        # print(query)
         if image is None:
             input_by_model = model.build_conversation_input_ids(tokenizer, query=query, history=history, template_version='base')
         else:
             input_by_model = model.build_conversation_input_ids(tokenizer, query=query, history=history, images=[image])
-
+        # print(image)
         inputs = {
             'input_ids': input_by_model['input_ids'].unsqueeze(0).to(DEVICE),
             'token_type_ids': input_by_model['token_type_ids'].unsqueeze(0).to(DEVICE),
             'attention_mask': input_by_model['attention_mask'].unsqueeze(0).to(DEVICE),
             'images': [[input_by_model['images'][0].to(DEVICE).to(torch_type)]] if image is not None else None,
         }
+        import pickle
+
+        def save_inputs_to_file(inputs, filename):
+            with open(filename, 'wb') as f:
+                pickle.dump(inputs, f)
+
+        # 假设 inputs 是你的数据字典
+        filename = 'true.pkl'
+        save_inputs_to_file(inputs, filename)
         if 'cross_images' in input_by_model and input_by_model['cross_images']:
             inputs['cross_images'] = [[input_by_model['cross_images'][0].to(DEVICE).to(torch_type)]]
 

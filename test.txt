@@ -1,0 +1,2 @@
+Can you point out 'green and cream double-decker bus' in the image and provide the bounding boxes of their location?
+/mnt/pfs-mc0p4k/nlu/team/yuhaofu/data/LLaVA-CoT-100k/coco/train2017/000000338745.jpg

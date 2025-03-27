@@ -21,26 +21,6 @@ else:
     warnings.warn("Your GPU does not support bfloat16 type, use fp16 instead")
 
 # if you use all of Our model, include cogagent-chat cogvlm-chat cogvlm-grounding and put it in different devices, you can do like this.
-models_info = {
-    'tokenizer': {
-        'path': os.environ.get('TOKENIZER_PATH', 'lmsys/vicuna-7b-v1.5'),
-    },
-    'agent_chat': {
-        'path': os.environ.get('MODEL_PATH_AGENT_CHAT', 'THUDM/cogagent-chat-hf'),
-        'device': ['cuda:0']
-    },
-    'vlm_chat': {
-        'path': os.environ.get('MODEL_PATH_VLM_CHAT', 'THUDM/cogvlm-chat-hf'),
-        'device': ['cuda:3']
-    },
-    'vlm_grounding': {
-        'path': os.environ.get('MODEL_PATH_VLM_GROUNDING','THUDM/cogvlm-grounding-generalist-hf'),
-        'device': ['cuda:6']
-    }
-}
-
-
-# if you just use one model, use like this
 # models_info = {
 #     'tokenizer': {
 #         'path': os.environ.get('TOKENIZER_PATH', 'lmsys/vicuna-7b-v1.5'),
@@ -49,7 +29,27 @@ models_info = {
 #         'path': os.environ.get('MODEL_PATH_AGENT_CHAT', 'THUDM/cogagent-chat-hf'),
 #         'device': ['cuda:0']
 #     },
+#     'vlm_chat': {
+#         'path': os.environ.get('MODEL_PATH_VLM_CHAT', 'THUDM/cogvlm-chat-hf'),
+#         'device': ['cuda:3']
+#     },
+#     'vlm_grounding': {
+#         'path': os.environ.get('MODEL_PATH_VLM_GROUNDING','THUDM/cogvlm-grounding-generalist-hf'),
+#         'device': ['cuda:6']
+#     }
+# }
 
+
+# if you just use one model, use like this
+models_info = {
+    'tokenizer': {
+        'path': os.environ.get('TOKENIZER_PATH', '/mnt/pfs-mc0p4k/nlu/team/yuhaofu/modle_weight/vicuna-7b-v1.5'),
+    },
+    'agent_chat': {
+        'path': os.environ.get('MODEL_PATH_AGENT_CHAT', '/mnt/pfs-mc0p4k/nlu/team/yuhaofu/modle_weight/cogvlm'),
+        'device': ['cuda:0']
+    },
+}
 
 
 @st.cache_resource
