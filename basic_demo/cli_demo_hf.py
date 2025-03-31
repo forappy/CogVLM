@@ -14,7 +14,7 @@ from transformers import AutoModelForCausalLM, LlamaTokenizer
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--quant", choices=[4], type=int, default=None, help='quantization bits')
-parser.add_argument("--from_pretrained", type=str, default="/mnt/pfs-mc0p4k/nlu/team/yuhaofu/modle_weight/cogvlm", help='pretrained ckpt')
+parser.add_argument("--from_pretrained", type=str, default="/mnt/pfs-mc0p4k/nlu/team/yuhaofu/modle_weight/cogagent-chat", help='pretrained ckpt')
 parser.add_argument("--local_tokenizer", type=str, default="/mnt/pfs-mc0p4k/nlu/team/yuhaofu/modle_weight/vicuna-7b-v1.5", help='tokenizer path')
 parser.add_argument("--fp16", action="store_true")
 parser.add_argument("--bf16", action="store_true")

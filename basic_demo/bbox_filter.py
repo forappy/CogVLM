@@ -2,7 +2,6 @@ import os
 import json
 import torch
 import argparse
-import datetime
 from PIL import Image
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -99,13 +98,15 @@ def parse_bbox_from_response(response):
     
     # 不符合条件的返回None
     return None
+def bbox_convert(bbox):
+    bbox = bbox*1000
+    return f"[{bbox}]"
 
-
-def generate_bbox_prompt(element):
+def generate_bbox_prompt(bbox, content):
     """
     为列表元素生成提示，用于请求模型生成边界框
     """
-    return (f"Can you point out '{element}' in the image and provide the bounding boxes of their location?")
+    return (f"Tell me if the designated area {bbox} in the picture is '{content}', yes or no?")
 
 
 def setup_distributed(rank, world_size):
@@ -116,7 +117,7 @@ def setup_distributed(rank, world_size):
     os.environ['MASTER_PORT'] = '12355'
     
     # 初始化进程组
-    dist.init_process_group("nccl", rank=rank, world_size=world_size, timeout=datetime.timedelta(seconds=3600))
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
     
     # 设置GPU设备
     torch.cuda.set_device(rank)
@@ -181,26 +182,17 @@ def run_inference(rank, world_size, args):
             # image = Image.open(image_path).convert('RGB')
             processed_conversations = []
             
-            for conversation in conversations:
-                processed_conv = {}
-                
-                # 处理 <CAPTION> 列表
-                if "<CAPTION>" in conversation and conversation["<CAPTION>"]:
-                    caption_elements = conversation["<CAPTION>"]
-                    caption_with_bbox = []
-                    
-                    for element in caption_elements:
-                        prompt = generate_bbox_prompt(element)
-                        
-                        # 使用CogVLM生成边界框
-                        # response = model.module.chat(
-                        #     tokenizer,
-                        #     query=prompt,
-                        #     image=image,
-                        #     history=None,
-                        #     max_new_tokens=args.max_tokens,
-                        #     do_sample=False
-                        # )
+            def process_elements(elements, model, tokenizer, image, rank, args):
+                results_with_bbox = []
+
+                for element in elements:
+                    if element['bbox'] is not None:
+                        bbox = element['bbox']
+                        content = element['content']
+
+                        convert_bbox = bbox_convert(bbox)
+                        prompt = generate_bbox_prompt(convert_bbox, content)
+
                         input_by_model = model.module.build_conversation_input_ids(
                             tokenizer, 
                             query=prompt,
@@ -231,74 +223,48 @@ def run_inference(rank, world_size, args):
                         # print('image_path:', image_path, 'prompt:', prompt)
                         # print('response:', response)
                         response = response.split("</s>")[0]
+                        print(response)
+                        flag = 1
+                        if 'yes' in response.lower():
+                            bbox = bbox
+                        elif 'no' in response.lower():
+                            bbox = element['bbox']
+                        else:
+                            flag = 0
+                    else:
+                        bbox = element['bbox']
+                        flag = 1
+                    results_with_bbox.append({
+                        "content": element['content'],
+                        "bbox": bbox,
+                        "flag": flag
+                    })
+                    print(flag)
+                
+                return results_with_bbox
 
-                        # 解析边界框
-                        bbox = parse_bbox_from_response(response)
-                        
-                        caption_with_bbox.append({
-                            "content": element,
-                            "bbox": bbox
-                        })
-                        # print(response)
-                        print(bbox)
-                    processed_conv["<CAPTION>"] = caption_with_bbox
+
+            # 使用重构函数
+            processed_conversations = []
+
+            for conversation in conversations:
+                processed_conv = {}
+
+                # 处理 <CAPTION> 列表
+                if "<CAPTION>" in conversation and conversation["<CAPTION>"]:
+                    caption_elements = conversation["<CAPTION>"]
+                    processed_conv["<CAPTION>"] = process_elements(
+                        caption_elements, model, tokenizer, image, rank, args
+                    )
                 else:
                     processed_conv["<CAPTION>"] = None
                 
                 # 处理 <REASONING> 列表
                 if "<REASONING>" in conversation and conversation["<REASONING>"]:
                     reasoning_elements = conversation["<REASONING>"]
-                    reasoning_with_bbox = []
-                    
-                    for element in reasoning_elements:
-                        prompt = generate_bbox_prompt(element)
-                        
-                        # 使用CogVLM生成边界框
-                        # response = model.module.chat(
-                        #     tokenizer,
-                        #     query=prompt,
-                        #     image=image,
-                        #     history=None,
-                        #     max_new_tokens=args.max_tokens,
-                        #     do_sample=False
-                        # )
-                        input_by_model = model.module.build_conversation_input_ids(
-                            tokenizer, 
-                            query=prompt,
-                            history=None, 
-                            images=[image]
-                        )
-                        
-                        inputs = {
-                            'input_ids': input_by_model['input_ids'].unsqueeze(0).to(rank),
-                            'token_type_ids': input_by_model['token_type_ids'].unsqueeze(0).to(rank),
-                            'attention_mask': input_by_model['attention_mask'].unsqueeze(0).to(rank),
-                            'images': [[input_by_model['images'][0].to(rank).to(torch.bfloat16)]] if image is not None else None,
-                        }
-                        
-                        if 'cross_images' in input_by_model and input_by_model['cross_images']:
-                            inputs['cross_images'] = [[input_by_model['cross_images'][0].to(rank).to(torch.bfloat16)]]
-                        
-                        # 生成参数
-                        gen_kwargs = {
-                            "max_length": args.max_tokens,
-                            "do_sample": False
-                        }
-                        
-                        # 生成响应
-                        outputs = model.module.generate(**inputs, **gen_kwargs)
-                        outputs = outputs[:, inputs['input_ids'].shape[1]:]
-                        response = tokenizer.decode(outputs[0])
-                        response = response.split("</s>")[0]
-                        # 解析边界框
-                        bbox = parse_bbox_from_response(response)
-                        print(bbox)
-                        reasoning_with_bbox.append({
-                            "content": element,
-                            "bbox": bbox
-                        })
-                    
-                    processed_conv["<REASONING>"] = reasoning_with_bbox
+                    processed_conv["<REASONING>"] = process_elements(
+                        reasoning_elements, model, tokenizer, image, rank, args
+                    )
                 else:
                     processed_conv["<REASONING>"] = None
                 
@@ -306,7 +272,7 @@ def run_inference(rank, world_size, args):
                 for key, value in conversation.items():
                     if key not in ["<CAPTION>", "<REASONING>"]:
                         processed_conv[key] = value
-                
+
                 processed_conversations.append(processed_conv)
             
             # 保存处理后的样本
@@ -363,7 +329,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_workers", type=int, default=4, help="Number of data loading workers per GPU")
     parser.add_argument("--max_tokens", type=int, default=2048, help="Maximum tokens for generation")
     parser.add_argument("--save_intermediate", action="store_true", help="Whether to save intermediate results")
-    parser.add_argument("--save_every", type=int, default=170, help="Save intermediate results every N samples")
+    parser.add_argument("--save_every", type=int, default=1, help="Save intermediate results every N samples")
     
     args = parser.parse_args()
     
