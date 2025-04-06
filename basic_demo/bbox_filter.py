@@ -99,8 +99,10 @@ def parse_bbox_from_response(response):
     # 不符合条件的返回None
     return None
 def bbox_convert(bbox):
-    bbox = bbox*1000
-    return f"[{bbox}]"
+    # 将每个元素乘以1000
+    scaled_bbox = [coord * 1000 for coord in bbox]
+    return f"[{scaled_bbox}]"
+
 
 def generate_bbox_prompt(bbox, content):
     """
@@ -180,7 +182,6 @@ def run_inference(rank, world_size, args):
 
             # image_path = os.path.join(args.image_dir, image_path)
             # image = Image.open(image_path).convert('RGB')
-            processed_conversations = []
             
             def process_elements(elements, model, tokenizer, image, rank, args):
                 results_with_bbox = []

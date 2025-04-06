@@ -1,4 +1,4 @@
-Can you point out 'green and cream double-decker bus' in the image and provide the bounding boxes of their location?
-/mnt/pfs-mc0p4k/nlu/team/yuhaofu/data/LLaVA-CoT-100k/coco/train2017/000000338745.jpg
-Tell me what you see within the designated area [[000, 711, 035, 993]] in the picture.
-Tell me if the designated area [[000, 711, 035, 993]] in the picture is "car on left front", yes or no?
+Can you point out 'Edgar Martinez' in the image and provide the bounding boxes of their location?
+/mnt/pfs-mc0p4k/nlu/team/yuhaofu/data/LLaVA-CoT-100k/chartqa/train/png/two_col_43974.png
+Tell me what you see within the designated area [[15, 366, 102, 421]] in the picture.
+Tell me if the designated area [[15, 366, 102, 421]] in the picture is "Grass", yes or no?
